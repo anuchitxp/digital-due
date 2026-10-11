@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUE Form — แบบประเมินการใช้ยาลดไขมันราคาสูง (โปรโตไทป์)</title>
+<style>
+  /* System font stack only — no web fonts (offline constraint, docs/05 NFR-1) */
+  :root {
+    --bg: #f7f8fa; --surface: #ffffff; --border: #dde1e7; --border-focus: #1a56db;
+    --text: #111827; --text-muted: #6b7280; --text-label: #374151;
+    --accent: #1a56db; --accent-light: #eff4ff;
+    --pass: #065f46; --pass-bg: #d1fae5; --fail: #991b1b; --fail-bg: #fee2e2;
+    --warn: #92400e; --warn-bg: #fef3c7; --section-head: #1e293b;
+    --mono: ui-monospace, 'Cascadia Mono', 'Courier New', monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, 'Noto Sans Thai', 'Leelawadee UI', Tahoma, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px 64px; line-height: 1.6; }
+
+  .app-header { max-width: 780px; margin: 0 auto 20px; display: flex; align-items: flex-start; gap: 14px; }
+  .app-icon { width: 48px; height: 48px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 22px; color:#fff; }
+  .app-title { font-size: 20px; font-weight: 600; color: var(--section-head); }
+  .app-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .proto-badge { display:inline-block; margin-left:8px; font-size:11px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; border-radius:10px; padding:1px 8px; vertical-align:middle; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; max-width: 780px; margin: 0 auto 16px; }
+  .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .field-row { margin-bottom: 14px; }
+  .field-row:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text-label); margin-bottom: 5px; }
+  label .req { color: #dc2626; margin-left: 2px; }
+  label .hint { font-weight: 400; color: var(--text-muted); margin-left: 6px; font-size: 12px; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: var(--sans); font-size: 14px; color: var(--text); background: var(--surface);
+    transition: border-color 0.15s; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(26,86,219,0.1); }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .lookup-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+
+  .btn { padding: 10px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font-family: var(--sans); font-size: 14px; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  .btn-primary:hover { background: #1546a8; color: #fff; }
+  .btn-ghost { background: transparent; }
+
+  .radio-group, .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .radio-pill input, .check-pill input { display: none; }
+  .radio-pill label, .check-pill label {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--border);
+    border-radius: 20px; font-size: 13px; font-weight: 400; color: var(--text); cursor: pointer;
+    transition: all 0.15s; margin: 0; user-select: none;
+  }
+  .radio-pill input:checked + label, .check-pill input:checked + label { background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+  .subcard { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 10px; background: #fafbfc; }
+  .subcard-title { font-size: 13px; font-weight: 600; color: var(--section-head); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .drug-section { display: none; }
+  .drug-section.active { display: block; }
+  .drug-tab { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; }
+  .drug-tab:hover { border-color: var(--accent); }
+  .drug-tab input { display: none; }
+  .drug-tab.selected { border-color: var(--accent); background: var(--accent-light); }
+  .drug-tab .d-icon { font-size: 20px; }
+  .drug-tab .d-name { font-size: 14px; font-weight: 600; }
+  .drug-tab .d-sub { font-size: 12px; color: var(--text-muted); }
+
+  .patient-strip { display: none; border: 1px solid var(--border); background: #f8fafc; border-radius: 10px; padding: 12px 14px; margin-top: 10px; font-size: 13px; }
+  .patient-strip.show { display: block; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 10px; padding: 1px 10px; margin-left: 6px; }
+  .badge-csmbs { background: var(--pass-bg); color: var(--pass); border: 1px solid #6ee7b7; }
+  .badge-other { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+  .chip { display: inline-block; font-size: 12px; background: var(--accent-light); color: var(--accent); border-radius: 8px; padding: 1px 8px; margin: 2px 4px 2px 0; }
+
+  .reason-block { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+  .reason-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; background: #fafbfc; }
+  .reason-header input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+  .reason-code { font-family: var(--mono); font-size: 12px; font-weight: 600; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .reason-A { background:#fee2e2; color:#991b1b; } .reason-B { background:#dbeafe; color:#1e40af; }
+  .reason-C { background:#d1fae5; color:#065f46; } .reason-D { background:#fef3c7; color:#92400e; }
+  .reason-E { background:#f3e8ff; color:#6b21a8; } .reason-F { background:#f1f5f9; color:#94a3b8; }
+  .reason-label { font-size: 13px; font-weight: 500; color: var(--text-label); margin: 0; }
+  .reason-detail { display: none; padding: 12px 16px 14px; border-top: 1px solid var(--border); background: #fff; }
+  .reason-block.open .reason-detail { display: block; }
+  .reason-block.disabled { opacity: 0.45; pointer-events: none; }
+
+  .verdict-card { display: none; align-items: flex-start; gap: 12px; border-radius: 10px; padding: 14px 16px; max-width: 780px; margin: 0 auto 16px; }
+  .verdict-card.show { display: flex; }
+  .verdict-card.pass { background: var(--pass-bg); border: 1px solid #6ee7b7; }
+  .verdict-card.fail { background: var(--fail-bg); border: 1px solid #fca5a5; }
+  .verdict-card.warn { background: var(--warn-bg); border: 1px solid #fcd34d; }
+  .verdict-icon { font-size: 28px; flex-shrink: 0; }
+  .verdict-title { font-size: 15px; font-weight: 600; }
+  .verdict-desc { font-size: 13px; margin-top: 2px; white-space: pre-line; }
+  .verdict-tag { font-size: 11px; font-family: var(--mono); background: rgba(255,255,255,0.7); border-radius: 8px; padding: 1px 8px; margin-left: 8px; }
+
+  .output-box { width: 100%; min-height: 200px; font-family: var(--mono); font-size: 12.5px; background: #f8fafc; }
+  .output-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .copy-btn { font-size: 13px; }
+  .copy-ok { color: var(--pass); font-size: 13px; align-self: center; display: none; }
+
+  .saved-note { font-size: 12px; color: var(--text-muted); text-align: center; max-width: 780px; margin: 0 auto 16px; }
+  .actions-bar { display: flex; gap: 10px; justify-content: center; max-width: 780px; margin: 0 auto; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--section-head); color: #fff; border-radius: 10px; padding: 10px 20px; font-size: 14px; display: none; z-index: 50; }
+  .toast.show { display: block; }
+
+  .print-sheet { display: none; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .app-header, .card, .verdict-card, .saved-note, .actions-bar, .toast { display: none !important; }
+    .print-sheet { display: block; max-width: 100%; font-size: 13px; }
+    .print-sheet h1 { font-size: 18px; text-align: center; margin-bottom: 2px; }
+    .print-sheet .ps-sub { text-align: center; font-size: 12px; color: #374151; margin-bottom: 14px; }
+    .ps-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .ps-table td { border: 1px solid #94a3b8; padding: 5px 8px; font-size: 12.5px; }
+    .ps-table td.k { background: #f1f5f9; width: 22%; font-weight: 600; }
+    .ps-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; text-align: center; font-size: 13px; }
+    .ps-sign .line { border-top: 1px solid #334155; margin-top: 36px; padding-top: 4px; }
+    .ps-verdict { border: 2px solid #334155; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-weight: 600; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-icon">🫀</div>
+  <div>
+    <div class="app-title">DUE — ยาลดไขมันราคาสูง <span class="proto-badge">โปรโตไทป์ (offline)</span></div>
+    <div class="app-sub">แบบฟอร์มประเมินการใช้ยา (Drug Use Evaluation) — อายุรกรรมหัวใจ / ต่อมไร้ท่อ OPD · เกณฑ์ <span style="font-family:var(--mono)">v1.0-draft</span> ยังไม่ผ่านคณะกรรมการ</div>
+  </div>
+</div>
+
+<!-- ============ 1. ข้อมูลผู้ป่วย ============ -->
+<div class="card">
+  <div class="section-title">1 · ข้อมูลผู้ป่วย</div>
+  <div class="lookup-row">
+    <div class="field-row">
+      <label for="hn">HN <span class="req">*</span><span class="hint">ลอง: 6500012, 6500033, 6600045, 6600078, 6500090</span></label>
+      <input type="text" id="hn" placeholder="กรอก HN แล้วกดค้นจาก HIS (จำลอง)">
+    </div>
+    <button class="btn btn-primary" id="btn_lookup" type="button">🔍 ดึงข้อมูล HIS</button>
+  </div>
+  <div class="patient-strip" id="pt_info"></div>
+  <div class="row-2">
+    <div class="field-row">
+      <label for="req_date">วันที่ขอ <span class="req">*</span></label>
+      <input type="date" id="req_date">
+    </div>
+    <div class="field-row">
+      <label for="doctor">แพทย์ผู้ขอ <span class="req">*</span></label>
+      <select id="doctor">
+        <option value="">— เลือกแพทย์ —</option>
+        <option value="นพ.ทดสอบ หัวใจดี (CARDIO)">นพ.ทดสอบ หัวใจดี — อายุรกรรมหัวใจ</option>
+        <option value="พญ.ทดสอบ ต่อมไร้ท่อ (ENDO)">พญ.ทดสอบ ต่อมไร้ท่อ — อายุรกรรมต่อมไร้ท่อ</option>
+      </select>
+    </div>
+  </div>
+  <div class="row-3">
+    <div class="field-row">
+      <label for="pt_name">ชื่อ-สกุลผู้ป่วย <span class="req">*</span></label>
+      <input type="text" id="pt_name" placeholder="จาก HIS หรือกรอกเอง">
+    </div>
+    <div class="field-row">
+      <label for="age">อายุ (ปี) <span class="req">*</span></label>
+      <input type="number" id="age" min="0" max="120">
+    </div>
+    <div class="field-row">
+      <label for="sex">เพศ <span class="req">*</span></label>
+      <select id="sex"><option value="">—</option><option value="ช">ชาย</option><option value="หญิง">หญิง</option></select>
+    </div>
+  </div>
+  <div class="row-2">
+    <div class="field-row">
+      <label for="privilege">สิทธิการรักษา <span class="req">*</span><span class="hint">CSMBS → โหมดเกณฑ์เข้มงวด</span></label>
+      <select id="privilege">
+        <option value="">—</option>
+        <option value="CSMBS">CSMBS (ข้าราชการ)</option>
+        <option value="UCS">UCS (บัตรทอง)</option>
+        <option value="SS">SS (ประกันสังคม)</option>
+        <option value="SELFPAY">ชำระเอง</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label for="unit">หน่วยงานที่ขอ <span class="req">*</span></label>
+      <select id="unit"><option value="">—</option><option value="CARDIO">อายุรกรรมหัวใจ (Cardiology)</option><option value="ENDO">อายุรกรรมต่อมไร้ท่อ (Endocrine)</option></select>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 2. ยาที่ขอ ============ -->
+<div class="card">
+  <div class="section-title">2 · ยาที่ขอประเมิน <span style="letter-spacing:0">เกณฑ์ตามเอกสาร docs/03 (ตัวเลขเป็นสมมติฐาน รอคณะกรรมการยืนยัน)</span></div>
+
+  <label class="drug-tab" id="tab_pita">
+    <input type="radio" name="drug" value="PITAVA" id="drug_pita">
+    <span class="d-icon">💊</span>
+    <span><span class="d-name">Pitavastatin (original)</span><br><span class="d-sub">Statin — Livalo® · 2 mg/4 mg od</span></span>
+  </label>
+  <label class="drug-tab" id="tab_evo">
+    <input type="radio" name="drug" value="EVO" id="drug_evo">
+    <span class="d-icon">💉</span>
+    <span><span class="d-name">Evolocumab (PCSK9 mAb)</span><br><span class="d-sub">Repatha® — 140 mg q2w / 420 mg q4w</span></span>
+  </label>
+  <label class="drug-tab" id="tab_incl">
+    <input type="radio" name="drug" value="INCL" id="drug_incl">
+    <span class="d-icon">💉</span>
+    <span><span class="d-name">Inclisiran (siRNA)</span><br><span class="d-sub">Sybrava® — 284 mg SC: วันที่ 0 → 3 เดือน → ทุก 6 เดือน</span></span>
+  </label>
+
+  <div class="row-2">
+    <div class="field-row">
+      <label for="drug_dose">ขนาดที่ขอ <span class="req">*</span></label>
+      <select id="drug_dose"><option value="">— เลือกยาก่อน —</option></select>
+    </div>
+    <div class="field-row">
+      <label for="eval_type">ประเภทคำขอ</label>
+      <select id="eval_type"><option value="new">คำขอใหม่</option><option value="renewal">ต่อเนื่อง (renewal)</option></select>
+    </div>
+  </div>
+
+  <!-- ---- ส่วนเกณฑ์: PITAVASTATIN ---- -->
+  <div class="drug-section" id="sec_pita">
+    <div class="field-row">
+      <label>ประเภท Prevention <span class="req">*</span></label>
+      <div class="radio-group">
+        <span class="radio-pill"><input type="radio" name="prevention" value="secondary" id="prev_secondary"><label for="prev_secondary">Secondary Prevention</label></span>
+        <span class="radio-pill"><input type="radio" name="prevention" value="primary" id="prev_primary"><label for="prev_primary">Primary Prevention (เกณฑ์เข้มงวด)</label></span>
+      </div>
+    </div>
+    <div class="subcard" id="secondary_detail" style="display:none">
+      <div class="subcard-title">เงื่อนไข Secondary Prevention (เลือกอย่างน้อย 1)</div>
+      <div class="checkbox-group" id="secondary_conditions">
+        <span class="check-pill"><input type="checkbox" id="cond_acs" value="ACS/STEMI/NSTEMI"><label for="cond_acs">ACS / STEMI / NSTEMI</label></span>
+        <span class="check-pill"><input type="checkbox" id="cond_pci" value="PCI/CABG"><label for="cond_pci">ประวัติ PCI / CABG</label></span>
+        <span class="check-pill"><input type="checkbox" id="cond_cad" value="Stable CAD"><label for="cond_cad">Stable CAD (documented)</label></span>
+        <span class="check-pill"><input type="checkbox" id="cond_stroke" value="Ischemic stroke/TIA"><label for="cond_stroke">Ischemic Stroke / TIA</label></span>
+        <span class="check-pill"><input type="checkbox" id="cond_pad" value="PAD"><label for="cond_pad">PAD</label></span>
+      </div>
+    </div>
+    <div class="subcard" id="primary_detail" style="display:none">
+      <div class="subcard-title">เงื่อนไข Primary Prevention (เลือกอย่างน้อย 1)</div>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="pri_fh" value="FH"><label for="pri_fh">Familial Hypercholesterolemia (FH)</label></span>
+        <span class="check-pill"><input type="checkbox" id="pri_dm_risk" value="DM + risk ≥7.5%"><label for="pri_dm_risk">DM + ASCVD risk ≥7.5%</label></span>
+        <span class="check-pill"><input type="checkbox" id="pri_ckd" value="CKD 3–4"><label for="pri_ckd">CKD stage 3–4</label></span>
+        <span class="check-pill"><input type="checkbox" id="pri_hi_risk" value="High risk ≥10%"><label for="pri_hi_risk">High ASCVD risk ≥10%</label></span>
+      </div>
+      <div class="field-row" style="margin-top:10px">
+        <label for="pri_calcrisk">ASCVD risk คำนวณ (%) <span class="hint">ถ้ามี</span></label>
+        <input type="number" id="pri_calcrisk" min="0" max="100" step="0.1">
+      </div>
+    </div>
+    <div class="row-3">
+      <div class="field-row">
+        <label for="ldl_value">LDL-C (mg/dL) <span class="req">*</span></label>
+        <input type="number" id="ldl_value" min="0">
+      </div>
+      <div class="field-row">
+        <label for="ldl_date">วันที่เจาะ <span class="req">*</span></label>
+        <input type="date" id="ldl_date">
+      </div>
+      <div class="field-row">
+        <label for="ldl_target">LDL target (mg/dL) <span class="hint">auto ตาม prevention</span></label>
+        <input type="number" id="ldl_target">
+      </div>
+    </div>
+    <div class="subcard">
+      <div class="subcard-title">Statin สูตรยา (generic) ที่เคยใช้ ≥3 เดือน แล้วไม่ถึงเป้า (เกณฑ์ CSMBS)</div>
+      <div class="row-3">
+        <div class="field-row"><label for="prev_drug">ยาที่ใช้</label><input type="text" id="prev_drug" placeholder="เช่น Atorvastatin 80 mg"></div>
+        <div class="field-row"><label for="prev_ldl">LDL ขณะใช้ยา (mg/dL)</label><input type="number" id="prev_ldl"></div>
+        <div class="field-row"><label for="prev_duration">ระยะเวลาที่ใช้ (เดือน)</label><input type="number" id="prev_duration" min="0"></div>
+      </div>
+    </div>
+    <div class="field-row">
+      <label for="co_note">Comorbidities สำคัญ / หมายเหตุ</label>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="co_dm" value="DM"><label for="co_dm">DM</label></span>
+        <span class="check-pill"><input type="checkbox" id="co_htn" value="HT"><label for="co_htn">HT</label></span>
+        <span class="check-pill"><input type="checkbox" id="co_ckd" value="CKD"><label for="co_ckd">CKD</label></span>
+        <span class="check-pill"><input type="checkbox" id="co_hf" value="HF"><label for="co_hf">HF</label></span>
+        <span class="check-pill"><input type="checkbox" id="co_af" value="AF"><label for="co_af">AF</label></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- ส่วนเกณฑ์: EVOLOCUMAB ---- -->
+  <div class="drug-section" id="sec_evo">
+    <div class="field-row">
+      <label>ข้อบ่งชี้ (เลือกอย่างน้อย 1) <span class="req">*</span></label>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="evo_acs" value="post-ACS"><label for="evo_acs">post-ACS</label></span>
+        <span class="check-pill"><input type="checkbox" id="evo_pci" value="PCI/CABG"><label for="evo_pci">PCI / CABG</label></span>
+        <span class="check-pill"><input type="checkbox" id="evo_stroke" value="Ischemic stroke/TIA"><label for="evo_stroke">Ischemic stroke / TIA</label></span>
+        <span class="check-pill"><input type="checkbox" id="evo_pad" value="PAD"><label for="evo_pad">PAD</label></span>
+        <span class="check-pill"><input type="checkbox" id="evo_fh" value="FH รุนแรง"><label for="evo_fh">FH รุนแรง / Severe hypercholesterolemia</label></span>
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field-row">
+        <label for="evo_stat">Statin ขนาดสูงสุด ≥3 เดือน <span class="req">*</span></label>
+        <select id="evo_stat"><option value="">—</option><option value="yes">ใช้แล้ว ครบเกณฑ์</option><option value="no">ไม่ได้ใช้</option><option value="intol">ไม่สามารถใช้ได้ (intolerance)</option></select>
+      </div>
+      <div class="field-row">
+        <label for="evo_stat_detail">รายละเอียด statin <span class="hint">ยา/ขนาด/ระยะเวลา</span></label>
+        <input type="text" id="evo_stat_detail" placeholder="เช่น Atorvastatin 80 mg 6 เดือน">
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field-row">
+        <label for="evo_eze">Ezetimibe ≥3 เดือน <span class="req">*</span></label>
+        <select id="evo_eze"><option value="">—</option><option value="yes">ใช้แล้ว ครบเกณฑ์</option><option value="no">ยังไม่ได้ใช้</option><option value="ci">ใช้ไม่ได้ (CI)</option></select>
+      </div>
+      <div class="field-row">
+        <label for="evo_eze_ldl">LDL ขณะใช้ statin + ezetimibe (mg/dL)</label>
+        <input type="number" id="evo_eze_ldl">
+      </div>
+    </div>
+    <div class="row-3">
+      <div class="field-row">
+        <label for="evo_risk">กลุ่มเป้าหมาย LDL <span class="req">*</span></label>
+        <select id="evo_risk"><option value="">—</option><option value="sec">Secondary prevention → เป้า &lt;55, เกณฑ์เริ่ม ≥70</option><option value="fh">Primary รุนแรง/FH → เป้า &lt;100, เกณฑ์เริ่ม ≥100</option></select>
+      </div>
+      <div class="field-row">
+        <label for="ldl_value_evo">LDL-C ปัจจุบัน (mg/dL) <span class="req">*</span></label>
+        <input type="number" id="ldl_value_evo" min="0">
+      </div>
+      <div class="field-row">
+        <label for="ldl_date_evo">วันที่เจาะ <span class="req">*</span></label>
+        <input type="date" id="ldl_date_evo">
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field-row">
+        <label for="evo_dup">เคย/กำลังได้รับยากลุ่ม PCSK9 (mAb/siRNA) หรือไม่</label>
+        <select id="evo_dup"><option value="">—</option><option value="no">ไม่เคย</option><option value="yes">เคย/กำลัง (ระบุ)</option></select>
+      </div>
+      <div class="field-row">
+        <label for="evo_dup_note">ถ้าเคย — ระบุ</label>
+        <input type="text" id="evo_dup_note" placeholder="ยา/ระยะเวลา/ผลลัพธ์">
+      </div>
+    </div>
+    <div class="field-row">
+      <label>แผนการฉีด</label>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="evo_train" value="train"><label for="evo_train">ผู้ป่วย/ผู้ดูแลได้รับการฝึกฉีดเองแล้ว</label></span>
+      </div>
+    </div>
+    <div class="subcard" style="background:var(--warn-bg);border-color:#fcd34d">
+      <div class="subcard-title" style="color:var(--warn)">กฎการต่อเนื่อง (response rule — ใช้ตอน renewal)</div>
+      <div style="font-size:13px">ประเมินซ้ำเมื่อครบ 3 เดือน: LDL ต้องลดลง ≥50% จากก่อนเริ่ม หรือ &lt;70 mg/dL — หากไม่ถึง ให้หยั่งประเมินการหยุดยา (สมมติฐาน v1.0-draft)</div>
+      <div class="row-3" style="margin-top:10px">
+        <div class="field-row"><label for="evo_pre_ldl">LDL ก่อนเริ่มยา</label><input type="number" id="evo_pre_ldl"></div>
+        <div class="field-row"><label for="evo_now_ldl">LDL ปัจจุบัน (3 เดือน)</label><input type="number" id="evo_now_ldl"></div>
+        <div class="field-row"><label>ลดลง (%)</label><input type="text" id="evo_reduction" readonly placeholder="auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- ส่วนเกณฑ์: INCLISIRAN ---- -->
+  <div class="drug-section" id="sec_incl">
+    <div class="field-row">
+      <label>ข้อบ่งชี้ (เลือกอย่างน้อย 1) <span class="req">*</span></label>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="incl_acs" value="post-ACS"><label for="incl_acs">post-ACS</label></span>
+        <span class="check-pill"><input type="checkbox" id="incl_pci" value="PCI/CABG"><label for="incl_pci">PCI / CABG</label></span>
+        <span class="check-pill"><input type="checkbox" id="incl_stroke" value="Ischemic stroke/TIA"><label for="incl_stroke">Ischemic stroke / TIA</label></span>
+        <span class="check-pill"><input type="checkbox" id="incl_pad" value="PAD"><label for="incl_pad">PAD</label></span>
+        <span class="check-pill"><input type="checkbox" id="incl_fh" value="FH รุนแรง"><label for="incl_fh">FH รุนแรง / Severe hypercholesterolemia</label></span>
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field-row">
+        <label for="incl_stat">Statin ขนาดสูงสุด ± ezetimibe ครบระยะ <span class="req">*</span></label>
+        <select id="incl_stat"><option value="">—</option><option value="yes">ครบเกณฑ์</option><option value="no">ไม่ครบ</option><option value="intol">intolerance</option></select>
+      </div>
+      <div class="field-row">
+        <label for="incl_stat_detail">รายละเอียด</label>
+        <input type="text" id="incl_stat_detail" placeholder="ยา/ขนาด/ระยะเวลา">
+      </div>
+    </div>
+    <div class="field-row">
+      <label for="incl_pcsk9">ประวัติ PCSK9 mAb (evolocumab) <span class="req">*</span><span class="hint">เกณฑ์ v1.0-draft กำหนดให้มีประวัติก่อน — รอยืนยัน</span></label>
+      <select id="incl_pcsk9"><option value="">—</option><option value="fail">เคยใช้แล้วไม่ได้ผล</option><option value="intol">เคยใช้แล้วมี ADR/intolerance</option><option value="no">ไม่เคยใช้</option></select>
+    </div>
+    <div class="row-3">
+      <div class="field-row">
+        <label for="ldl_value_incl">LDL-C ปัจจุบัน (mg/dL) <span class="req">*</span></label>
+        <input type="number" id="ldl_value_incl" min="0">
+      </div>
+      <div class="field-row">
+        <label for="ldl_date_incl">วันที่เจาะ <span class="req">*</span></label>
+        <input type="date" id="ldl_date_incl">
+      </div>
+      <div class="field-row">
+        <label for="incl_thresh">เกณฑ์เริ่มยา (mg/dL)</label>
+        <input type="text" id="incl_thresh" value="≥100 (รอยืนยัน)" readonly>
+      </div>
+    </div>
+    <div class="subcard" style="background:var(--warn-bg);border-color:#fcd34d">
+      <div class="subcard-title" style="color:var(--warn)">ตารางการฉีด (ผู้ป่วยต้องรับทราบ)</div>
+      <div style="font-size:13px">วันที่ 0 → อีก 3 เดือน → ทุก 6 เดือน (284 mg SC) · การต่อเนื่องทุกครั้งต้องมีผล LDL ประกอบ</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 3. เหตุผลการใช้ยานอกบัญชียาหลักฯ (รหัส A–F) ============ -->
+<div class="card">
+  <div class="section-title">3 · เหตุผลการใช้ยานอกบัญชียาหลักฯ — รหัส A–F</div>
+  <p style="font-size:12.5px;color:var(--text-muted);margin:-6px 0 12px">ตามเกณฑ์กรมบัญชีกลาง/อปท. — เลือกได้มากกว่า 1 ข้อ (ยกเว้น F ไม่สามารถเบิกได้)</p>
+
+  <div class="reason-block" id="block_A">
+    <label class="reason-header"><input type="checkbox" id="reason_A"><span class="reason-code reason-A">A</span><span class="reason-label">เกิดอาการข้างเคียงจากยา (ADR) หรือแพ้ยาในบัญชียาหลักฯ</span></label>
+    <div class="reason-detail" id="detail_A">
+      <div class="checkbox-group" style="margin-bottom:10px">
+        <span class="check-pill"><input type="checkbox" id="adr_myalgia" value="Myalgia"><label for="adr_myalgia">Myalgia (ปวดกล้ามเนื้อ)</label></span>
+        <span class="check-pill"><input type="checkbox" id="adr_myositis" value="Myositis (CK สูง)"><label for="adr_myositis">Myositis (CK สูง)</label></span>
+        <span class="check-pill"><input type="checkbox" id="adr_rhabdo" value="Rhabdomyolysis"><label for="adr_rhabdo">Rhabdomyolysis</label></span>
+        <span class="check-pill"><input type="checkbox" id="adr_hepatitis" value="Hepatitis"><label for="adr_hepatitis">Hepatitis (LFT &gt;3×ULN)</label></span>
+        <span class="check-pill"><input type="checkbox" id="adr_allergy" value="Hypersensitivity"><label for="adr_allergy">Hypersensitivity / แพ้ยา</label></span>
+      </div>
+      <div class="row-2">
+        <div class="field-row"><label for="adr_drug">ยาที่ทำให้เกิด ADR</label><input type="text" id="adr_drug"></div>
+        <div class="field-row"><label for="adr_dose">ขนาดยา</label><input type="text" id="adr_dose"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reason-block" id="block_B">
+    <label class="reason-header"><input type="checkbox" id="reason_B"><span class="reason-code reason-B">B</span><span class="reason-label">ผลการรักษาไม่บรรลุเป้าหมาย (LDL ไม่ถึง target)</span></label>
+    <div class="reason-detail" id="detail_B">
+      <div class="row-3">
+        <div class="field-row"><label for="b_prev_drug">ยาที่ใช้</label><input type="text" id="b_prev_drug"></div>
+        <div class="field-row"><label for="b_prev_ldl">LDL ขณะใช้ยา</label><input type="number" id="b_prev_ldl"></div>
+        <div class="field-row"><label for="b_prev_dur">ระยะเวลา (เดือน)</label><input type="number" id="b_prev_dur"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="reason-block" id="block_C">
+    <label class="reason-header"><input type="checkbox" id="reason_C"><span class="reason-code reason-C">C</span><span class="reason-label">ไม่มียาในบัญชียาหลักฯ ให้ใช้ แต่มีข้อบ่งชี้ตามที่ อย. กำหนด</span></label>
+    <div class="reason-detail" id="detail_C">
+      <div class="field-row"><label for="c_indication">ระบุข้อบ่งชี้ตาม อย.</label><input type="text" id="c_indication" placeholder="เช่น primary hypercholesterolemia ผู้ใหญ่"></div>
+    </div>
+  </div>
+
+  <div class="reason-block" id="block_D">
+    <label class="reason-header"><input type="checkbox" id="reason_D"><span class="reason-code reason-D">D</span><span class="reason-label">มี Contraindication หรือ Drug Interaction กับยาในบัญชียาหลักฯ</span></label>
+    <div class="reason-detail" id="detail_D">
+      <div class="row-2">
+        <div class="field-row"><label for="interact_drug">ยาที่มี Interaction / Contraindication</label><input type="text" id="interact_drug"></div>
+        <div class="field-row"><label for="d_type">ประเภท</label>
+          <select id="d_type"><option>Contraindication</option><option>Drug Interaction</option></select>
+        </div>
+      </div>
+      <div class="checkbox-group">
+        <span class="check-pill"><input type="checkbox" id="int_simva" value="Simvastatin"><label for="int_simva">Simvastatin ใช้ไม่ได้</label></span>
+        <span class="check-pill"><input type="checkbox" id="int_atorva" value="Atorvastatin"><label for="int_atorva">Atorvastatin ใช้ไม่ได้</label></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="reason-block" id="block_E">
+    <label class="reason-header"><input type="checkbox" id="reason_E"><span class="reason-code reason-E">E</span><span class="reason-label">ยาในบัญชียาหลักฯ ราคาแพงกว่า</span></label>
+    <div class="reason-detail" id="detail_E">
+      <div class="field-row"><label for="e_note">หมายเหตุ (ราคาเปรียบเทียบ)</label><input type="text" id="e_note"></div>
+    </div>
+  </div>
+
+  <div class="reason-block" id="block_F">
+    <label class="reason-header"><input type="checkbox" id="reason_F"><span class="reason-code reason-F">F</span><span class="reason-label">ผู้ป่วยแสดงความจำนงต้องการ (เบิกไม่ได้)</span></label>
+  </div>
+
+  <div class="field-row">
+    <label for="extra_note">ข้อมูลเพิ่มเติม / หมายเหตุ</label>
+    <textarea id="extra_note" rows="2"></textarea>
+  </div>
+</div>
+
+<!-- ============ ผลประเมิน ============ -->
+<div class="verdict-card" id="verdict_card">
+  <div class="verdict-icon" id="verdict_icon"></div>
+  <div>
+    <div class="verdict-title" id="verdict_title"></div>
+    <div class="verdict-desc" id="verdict_desc"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">4 · สรุปคำขอ (สร้างอัตโนมัติ)</div>
+  <textarea class="output-box" id="summary_output" readonly></textarea>
+  <div class="output-actions">
+    <button class="btn copy-btn" id="btn_copy" type="button">📋 คัดลอกข้อความ</button>
+    <span class="copy-ok" id="copy_ok">คัดลอกแล้ว ✓</span>
+  </div>
+</div>
+
+<div class="saved-note" id="saved_note">ฉบับร่างบันทึกอัตโนมัติในเครื่องนี้เท่านั้น (localStorage)</div>
+
+<div class="actions-bar">
+  <button class="btn" id="btn_print" type="button">🖨️ พิมพ์ใบอนุมัติ/เสนอพิจารณา</button>
+  <button class="btn btn-primary" id="btn_submit" type="button">📤 ส่งพิจารณา (จำลอง → แดชบอร์ด)</button>
+</div>
+
+<!-- ============ แผ่นพิมพ์ ============ -->
+<div class="print-sheet" id="print_sheet"></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets/mock-data.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var M = window.DUE_MOCK;
+  $('req_date').value = new Date().toISOString().slice(0, 10);
+
+  var DOSES = {
+    PITAVA: ['2 mg od', '4 mg od', '1 mg od'],
+    EVO: ['140 mg SC ทุก 2 สัปดาห์', '420 mg SC ทุก 4 สัปดาห์'],
+    INCL: ['284 mg SC — วันที่ 0 → 3 ด. → ทุก 6 ด.']
+  };
+
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- HIS lookup (simulated) ---------- */
+  $('btn_lookup').addEventListener('click', function () {
+    var hn = $('hn').value.trim();
+    var p = M.patients.find(function (x) { return x.hn === hn; });
+    if (!p) { toast('ไม่พบ HN ในข้อมูลจำลอง — กรอกเองได้ (โหมด manual)'); return; }
+    $('pt_name').value = p.name; $('age').value = p.age; $('sex').value = p.sex === 'หญิง' ? 'หญิง' : 'ช';
+    $('privilege').value = p.privilege; $('unit').value = p.unit;
+    var strip = $('pt_info');
+    strip.classList.add('show');
+    var dx = p.diagnoses.map(function (d) { return '<span class="chip">' + d.icd + ' ' + d.th + '</span>'; }).join('');
+    var hist = p.statinHistory.length
+      ? p.statinHistory.map(function (h) { return '<li>' + h.drug + ' ' + h.dose + ' · ' + h.months + ' ด. · LDL ' + h.onTreatmentLdl + (h.note ? ' — ' + h.note : '') + '</li>'; }).join('')
+      : '<li>ไม่มีประวัติ (ข้อมูลจำลอง)</li>';
+    strip.innerHTML =
+      '<b>' + p.name + '</b>' + (p.csmbs ? '<span class="badge badge-csmbs">CSMBS — เกณฑ์เข้มงวด</span>' : '<span class="badge badge-other">' + p.privilege + '</span>') +
+      ' · ' + p.age + ' ปี ' + p.sex + ' · ' + p.weight + ' kg<br>' +
+      'LDL-C ล่าสุด <b>' + p.labs.ldl.value + '</b> mg/dL (' + p.labs.ldl.date + ') · ALT ' + p.labs.alt + ' · CK ' + p.labs.ck + '<br>' +
+      'Diagnosis: ' + dx +
+      '<div style="margin-top:6px"><b>ประวัติยาลดไขมัน:</b><ul style="margin:4px 0 0 18px;font-size:12.5px">' + hist + '</ul></div>';
+    // prefill LDL if field empty
+    var ldlField = currentLdlField();
+    if (ldlField && !ldlField.value) ldlField.value = p.labs.ldl.value;
+    toast('ดึงข้อมูลจาก HIS จำลองสำเร็จ — แก้ไขได้');
+    saveDraft();
+  });
+
+  /* ---------- drug tabs / dose ---------- */
+  var drugTabs = { PITAVA: $('tab_pita'), EVO: $('tab_evo'), INCL: $('tab_incl') };
+  var drugSecs = { PITAVA: $('sec_pita'), EVO: $('sec_evo'), INCL: $('sec_incl') };
+  function selectedDrug() {
+    var r = document.querySelector('input[name="drug"]:checked');
+    return r ? r.value : null;
+  }
+  document.querySelectorAll('input[name="drug"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      Object.keys(drugTabs).forEach(function (k) { drugTabs[k].classList.toggle('selected', k === r.value); });
+      Object.keys(drugSecs).forEach(function (k) { drugSecs[k].classList.toggle('active', k === r.value); });
+      var sel = $('drug_dose'); sel.innerHTML = '';
+      (DOSES[r.value] || []).forEach(function (d) { var o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+      evaluate(); saveDraft();
+    });
+  });
+
+  /* ---------- prevention → target ---------- */
+  function currentLdlField() {
+    var d = selectedDrug();
+    return d === 'PITAVA' ? $('ldl_value') : d === 'EVO' ? $('ldl_value_evo') : d === 'INCL' ? $('ldl_value_incl') : null;
+  }
+  document.querySelectorAll('input[name="prevention"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      $('secondary_detail').style.display = r.value === 'secondary' ? 'block' : 'none';
+      $('primary_detail').style.display = r.value === 'primary' ? 'block' : 'none';
+      $('ldl_target').value = r.value === 'secondary' ? 55 : 70; // placeholder per docs/03
+      evaluate();
+    });
+  });
+
+  /* ---------- reason codes ---------- */
+  ['A', 'B', 'C', 'D', 'E'].forEach(function (c) {
+    var cb = $('reason_' + c);
+    cb.addEventListener('change', function () {
+      $('block_' + c).classList.toggle('open', cb.checked);
+      evaluate();
+    });
+  });
+
+  function val(id) { var e = $(id); return e ? e.value.trim() : ''; }
+  function num(id) { var v = parseFloat(val(id)); return isNaN(v) ? null : v; }
+  function checked(sel) {
+    return Array.prototype.slice.call(document.querySelectorAll(sel + ':checked')).map(function (c) { return c.value; });
+  }
+
+  /* ---------- evaluation logic (placeholder thresholds per docs/03 v1.0-draft) ---------- */
+  function evaluate() {
+    var drug = selectedDrug();
+    var card = $('verdict_card');
+    if (!drug) { card.classList.remove('show'); return null; }
+    var issues = [], missing = [];
+    var verdict = 'pass', csmbs = val('privilege') === 'CSMBS';
+
+    if (drug === 'PITAVA') {
+      var prevention = document.querySelector('input[name="prevention"]:checked');
+      if (!prevention) { missing.push('ประเภท Prevention'); }
+      else if (prevention.value === 'secondary') {
+        if (!checked('#secondary_conditions input').length) missing.push('เงื่อนไข Secondary อย่างน้อย 1 ข้อ');
+      } else if (!checked('#primary_detail input').length) missing.push('เงื่อนไข Primary อย่างน้อย 1 ข้อ');
+      var ldl = num('ldl_value'), target = num('ldl_target');
+      if (ldl === null) missing.push('LDL-C');
+      var trialMonths = num('prev_duration') || 0, trialLdl = num('prev_ldl');
+      var hasTrial = val('prev_drug') && trialMonths >= 3 && trialLdl !== null && (target === null || trialLdl > target);
+      var hasAdr = checked('#detail_A input[type="checkbox"]').length > 0;
+      if (ldl !== null && target !== null && ldl <= target) issues.push('LDL ' + ldl + ' ไม่สูงกว่าเป้า ' + target + ' → ไม่มีข้อเริ่ม/สลับยา');
+      if (!hasTrial && !hasAdr) issues.push('ต้องมี: statin สูตรยา ≥3 ด. ไม่ถึงเป้า หรือ ประวัติ ADR/intolerance (เกณฑ์ CSMBS)');
+      verdict = (missing.length || issues.length) ? (missing.length && !issues.length ? 'warn' : 'fail') : 'pass';
+      if (issues.length && !missing.length) verdict = 'fail';
+      if (missing.length && issues.length) verdict = 'fail';
+      if (missing.length && !issues.length) verdict = 'warn';
+    }
+
+    if (drug === 'EVO' || drug === 'INCL') {
+      var indSel = drug === 'EVO' ? '#sec_evo .checkbox-group:first-of-type input' : '#sec_incl .checkbox-group:first-of-type input';
+      if (!checked(indSel).length) missing.push('ข้อบ่งชี้อย่างน้อย 1 ข้อ');
+      var statSel = drug === 'EVO' ? val('evo_stat') : val('incl_stat');
+      if (!statSel) missing.push('สถานะ statin ขนาดสูงสุด');
+      else if (statSel === 'no') issues.push('ยังไม่ได้ใช้ statin ขนาดสูงสุด → ไม่ผ่านเกณฑ์');
+      var ezeSel = drug === 'EVO' ? val('evo_eze') : 'yes';
+      if (drug === 'EVO' && !ezeSel) missing.push('สถานะ ezetimibe');
+      else if (ezeSel === 'no') issues.push('ยังไม่ได้ทดลอง ezetimibe ≥3 เดือน → ไม่ผ่านเกณฑ์');
+      var ldlF = currentLdlField();
+      var ldl2 = ldlF ? num(ldlF.id) : null;
+      if (ldl2 === null) missing.push('LDL-C ปัจจุบัน');
+      else {
+        var th = drug === 'EVO' ? (val('evo_risk') === 'fh' ? 100 : val('evo_risk') === 'sec' ? 70 : null) : 100;
+        if (drug === 'EVO' && th === null) missing.push('กลุ่มเป้าหมาย LDL');
+        if (th !== null && ldl2 < th) issues.push('LDL ' + ldl2 + ' ต่ำกว่าเกณฑ์เริ่มยา ≥' + th + ' → ไม่ผ่านเกณฑ์');
+      }
+      if (drug === 'INCL') {
+        var p9 = val('incl_pcsk9');
+        if (!p9) missing.push('ประวัติ PCSK9 mAb');
+        else if (p9 === 'no') issues.push('ไม่มีประวัติ PCSK9 mAb → ไม่ผ่านเกณฑ์ v1.0-draft (รอยืนยัน)');
+      }
+      if (val('eval_type') === 'renewal') {
+        var pre = num('evo_pre_ldl'), now = num('evo_now_ldl');
+        if (pre !== null && now !== null) {
+          var red = Math.round((pre - now) / pre * 100);
+          $('evo_reduction').value = red + '%';
+          if (red < 50 && now >= 70) issues.push('Response rule ไม่ผ่าน: ลดลง ' + red + '% (<50%) และ LDL ≥70 → พิจารณาหยุดยา');
+        }
+      }
+      verdict = issues.length ? 'fail' : (missing.length ? 'warn' : 'pass');
+    }
+
+    if (!csmbs && val('privilege')) issues.push('สิทธิ ' + val('privilege') + ' — โหมดเกณฑ์เข้มงวด CSMBS ไม่บังคับ (จำลอง: แสดงเป็นข้อสังเกต)');
+
+    var icon = verdict === 'pass' ? '✅' : verdict === 'fail' ? '❌' : '⚠️';
+    var title = verdict === 'pass' ? 'ผ่านเกณฑ์ DUE (จำลอง)' : verdict === 'fail' ? 'ไม่ผ่านเกณฑ์ DUE' : 'ข้อมูลไม่ครบ — ตรวจสอบ';
+    var desc = [];
+    if (missing.length) desc.push('รอกรอก: ' + missing.join(', '));
+    if (issues.length) desc.push(issues.join('\n'));
+    if (!desc.length) desc.push('ครบเงื่อนไขตามเกณฑ์ ' + M.meta.criteriaVersion + ' (ค่าทั้งหมดเป็นสมมติฐาน รอคณะกรรมการยืนยัน)');
+    card.className = 'verdict-card show ' + verdict;
+    $('verdict_icon').textContent = icon;
+    $('verdict_title').innerHTML = title + '<span class="verdict-tag">เกณฑ์ ' + M.meta.criteriaVersion + '</span>';
+    $('verdict_desc').textContent = desc.join('\n');
+    buildSummary(drug, verdict, missing, issues);
+    return { verdict: verdict, missing: missing, issues: issues };
+  }
+
+  /* ---------- Thai summary ---------- */
+  function buildSummary(drug, verdict, missing, issues) {
+    var drugName = { PITAVA: 'Pitavastatin (original)', EVO: 'Evolocumab', INCL: 'Inclisiran' }[drug] || '-';
+    var v = verdict === 'pass' ? 'ผ่านเกณฑ์' : verdict === 'fail' ? 'ไม่ผ่านเกณฑ์' : 'รอข้อมูลเพิ่มเติม';
+    var lines = [];
+    lines.push('คำขออนุมัติยาลดไขมันราคาสูง (DUE) — เกณฑ์ ' + M.meta.criteriaVersion);
+    lines.push('------------------------------------------------');
+    lines.push('HN: ' + (val('hn') || '-') + '    ชื่อ: ' + (val('pt_name') || '-'));
+    lines.push('อายุ/เพศ: ' + (val('age') || '-') + ' / ' + (val('sex') || '-') + '   สิทธิ: ' + (val('privilege') || '-'));
+    lines.push('หน่วยงาน: ' + (val('unit') || '-') + '   แพทย์ผู้ขอ: ' + (val('doctor') || '-'));
+    lines.push('วันที่ขอ: ' + (val('req_date') || '-') + '   ประเภท: ' + (val('eval_type') === 'renewal' ? 'ต่อเนื่อง' : 'คำขอใหม่'));
+    lines.push('------------------------------------------------');
+    lines.push('ยาที่ขอ: ' + drugName + '   ขนาด: ' + (val('drug_dose') || '-'));
+    var ldlF = currentLdlField();
+    if (drug === 'PITAVA') {
+      var pv = document.querySelector('input[name="prevention"]:checked');
+      lines.push('Prevention: ' + (pv ? (pv.value === 'secondary' ? 'Secondary — ' + checked('#secondary_conditions input').join(', ') : 'Primary — ' + checked('#primary_detail input').join(', ')) : '-'));
+      lines.push('LDL-C: ' + (val('ldl_value') || '-') + ' mg/dL (เจาะ ' + (val('ldl_date') || '-') + ')   เป้าหมาย: ' + (val('ldl_target') || '-'));
+      if (val('prev_drug')) lines.push('Statin เดิม: ' + val('prev_drug') + ' · LDL ขณะใช้ ' + (val('prev_ldl') || '-') + ' · ' + (val('prev_duration') || '-') + ' เดือน');
+    } else {
+      var inds = checked(drug === 'EVO' ? '#sec_evo input[type="checkbox"]:checked' : '#sec_incl input[type="checkbox"]:checked');
+      lines.push('ข้อบ่งชี้: ' + (inds.length ? inds.join(', ') : '-'));
+      lines.push('LDL-C ปัจจุบัน: ' + (ldlF && ldlF.value ? ldlF.value + ' mg/dL' : '-'));
+      if (val('evo_reduction')) lines.push('ผลตอบสนอง: ลดลง ' + val('evo_reduction') + ' จากก่อนเริ่มยา');
+    }
+    var reasons = ['A', 'B', 'C', 'D', 'E', 'F'].filter(function (c) { return $('reason_' + c).checked; });
+    if (reasons.length) {
+      lines.push('รหัสเหตุผล: ' + reasons.join(', '));
+      if (reasons.indexOf('A') >= 0) lines.push('  A: ' + checked('#detail_A input[type="checkbox"]').join(', ') + (val('adr_drug') ? ' — จาก ' + val('adr_drug') : ''));
+      if (reasons.indexOf('B') >= 0) lines.push('  B: ' + val('b_prev_drug') + ' LDL ' + (val('b_prev_ldl') || '-') + ' ' + (val('b_prev_dur') || '-') + ' ด.');
+      if (reasons.indexOf('C') >= 0) lines.push('  C: ' + val('c_indication'));
+      if (reasons.indexOf('D') >= 0) lines.push('  D: ' + val('d_type') + ' — ' + val('interact_drug'));
+      if (reasons.indexOf('E') >= 0) lines.push('  E: ' + val('e_note'));
+      if (reasons.indexOf('F') >= 0) lines.push('  F: ผู้ป่วยแสดงความจำนงต้องการ — ไม่สามารถเบิกค่าใช้จ่ายได้');
+    }
+    if (val('extra_note')) lines.push('หมายเหตุ: ' + val('extra_note'));
+    lines.push('------------------------------------------------');
+    lines.push('ผลการประเมิน (ระบบจำลอง): ' + v);
+    if (issues.length) lines.push('ประเด็น: ' + issues.join(' | '));
+    if (missing.length) lines.push('รอกรอก: ' + missing.join(', '));
+    $('summary_output').value = lines.join('\n');
+  }
+
+  /* ---------- copy ---------- */
+  $('btn_copy').addEventListener('click', function () {
+    $('summary_output').select();
+    try { document.execCommand('copy'); } catch (e) { navigator.clipboard && navigator.clipboard.writeText($('summary_output').value); }
+    $('copy_ok').style.display = 'inline';
+    setTimeout(function () { $('copy_ok').style.display = 'none'; }, 1800);
+  });
+
+  /* ---------- draft autosave (localStorage) ---------- */
+  var FIELDS = ['hn', 'req_date', 'doctor', 'pt_name', 'age', 'sex', 'privilege', 'unit', 'drug_dose', 'eval_type',
+    'ldl_value', 'ldl_date', 'ldl_target', 'prev_drug', 'prev_ldl', 'prev_duration', 'extra_note',
+    'ldl_value_evo', 'ldl_date_evo', 'evo_stat', 'evo_stat_detail', 'evo_eze', 'evo_eze_ldl', 'evo_risk',
+    'evo_dup', 'evo_dup_note', 'evo_pre_ldl', 'evo_now_ldl',
+    'ldl_value_incl', 'ldl_date_incl', 'incl_stat', 'incl_stat_detail', 'incl_pcsk9',
+    'adr_drug', 'adr_dose', 'b_prev_drug', 'b_prev_ldl', 'b_prev_dur', 'c_indication', 'interact_drug', 'd_type', 'e_note'];
+  var CBOX = 'sec_pita input[type="checkbox"], #secondary_conditions input, #primary_detail input, #block_A input[type="checkbox"], #block_D input[type="checkbox"], #evo_train, #co_dm, #co_htn, #co_ckd, #co_hf, #co_af';
+  function draftKey() { return 'due_draft_' + (val('hn') || 'nohn') + '_' + (selectedDrug() || 'nodrug'); }
+  function saveDraft() {
+    var d = { fields: {}, checks: {}, drug: selectedDrug(), prevention: (document.querySelector('input[name="prevention"]:checked') || {}).value || null, at: Date.now() };
+    FIELDS.forEach(function (f) { d.fields[f] = val(f); });
+    document.querySelectorAll(CBOX).forEach(function (c) { if (c.checked) d.checks[c.id] = true; });
+    ['A', 'B', 'C', 'D', 'E', 'F'].forEach(function (c) { d.checks['reason_' + c] = $('reason_' + c).checked; });
+    try { localStorage.setItem(draftKey(), JSON.stringify(d)); } catch (e) {}
+    $('saved_note').textContent = 'บันทึกฉบับร่างแล้ว · ' + new Date().toLocaleTimeString('th-TH') + ' (localStorage ของเครื่องนี้)';
+  }
+  function restoreDraft() {
+    var raw;
+    try { raw = localStorage.getItem(draftKey()); } catch (e) {}
+    if (!raw) return;
+    try {
+      var d = JSON.parse(raw);
+      Object.keys(d.fields || {}).forEach(function (k) { var e = $(k); if (e && d.fields[k]) e.value = d.fields[k]; });
+      Object.keys(d.checks || {}).forEach(function (k) { var e = $(k); if (e) e.checked = !!d.checks[k]; });
+      if (d.drug) { var r = $('drug_' + d.drug.toLowerCase().replace('pitava', 'pita')); if (r) r.checked = true, r.dispatchEvent(new Event('change')); }
+      if (d.prevention) { var p = $(d.prevention === 'secondary' ? 'prev_secondary' : 'prev_primary'); if (p) p.checked = true, p.dispatchEvent(new Event('change')); }
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(function (c) { if (d.checks['reason_' + c]) $('block_' + c).classList.add('open'); });
+    } catch (e) {}
+  }
+  document.addEventListener('input', function (e) { if (e.target.closest('.card')) { evaluate(); } });
+  document.addEventListener('change', function (e) { if (e.target.closest('.card')) { evaluate(); saveDraft(); } });
+
+  /* ---------- submit (simulated → dashboard bridge) ---------- */
+  $('btn_submit').addEventListener('click', function () {
+    var drug = selectedDrug();
+    if (!drug) { toast('เลือกยาก่อนส่งพิจารณา'); return; }
+    var res = evaluate() || { verdict: 'warn', missing: [], issues: [] };
+    if (res.missing.length && !confirm('ยังมีข้อมูลไม่ครบ: ' + res.missing.join(', ') + '\nส่งแบบ "รอข้อมูลเพิ่มเติม" ต่อหรือไม่?')) return;
+    var rec = {
+      date: val('req_date') || new Date().toISOString().slice(0, 10),
+      hn: val('hn') || '-', initials: val('pt_name') || '-',
+      age: num('age') || 0, sex: val('sex') || '-',
+      unit: val('unit') || '-', drug: drug,
+      evalType: val('eval_type'),
+      prevention: (document.querySelector('input[name="prevention"]:checked') || {}).value || null,
+      verdict: res.issues.length ? 'fail' : (res.missing.length ? 'warn' : 'pass'),
+      reasons: ['A', 'B', 'C', 'D', 'E', 'F'].filter(function (c) { return $('reason_' + c).checked; }),
+      costThb: drug === 'PITAVA' ? M.meta.prices.PITAVA.unitPrice * 30 : M.meta.prices[drug].unitPrice,
+      criteriaVersion: M.meta.criteriaVersion,
+      note: val('extra_note')
+    };
+    M.addSubmission(rec);
+    fillPrint(rec);
+    toast('ส่งคำขอแล้ว (จำลอง) — เปิด due-dashboard.html เพื่อดูรายการใหม่');
+    $('btn_print').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  /* ---------- print sheet ---------- */
+  function fillPrint(rec) {
+    $('print_sheet').innerHTML =
+      '<h1>แบบประเมินการใช้ยา (DUE) — ใบเสนอพิจารณา</h1>' +
+      '<div class="ps-sub">โรงพยาบาล (โปรโตไทป์) · คณะกรรมการยา/พัฒนาระบบยา · เกณฑ์ ' + rec.criteriaVersion + ' (สมมติฐาน)</div>' +
+      '<div class="ps-verdict">ผลการประเมินเบื้องต้น: ' + (rec.verdict === 'pass' ? 'ผ่านเกณฑ์ (รอผู้ตรวจสอบอนุมัติ)' : rec.verdict === 'fail' ? 'ไม่ผ่านเกณฑ์ — เสนอที่ประชุมพิจารณา' : 'รอข้อมูลเพิ่มเติม') + '</div>' +
+      '<table class="ps-table">' +
+      '<tr><td class="k">HN</td><td>' + rec.hn + '</td><td class="k">ชื่อ</td><td>' + rec.initials + '</td></tr>' +
+      '<tr><td class="k">อายุ/เพศ</td><td>' + rec.age + ' / ' + rec.sex + '</td><td class="k">สิทธิ</td><td>' + val('privilege') + '</td></tr>' +
+      '<tr><td class="k">หน่วยงาน</td><td>' + rec.unit + '</td><td class="k">แพทย์ผู้ขอ</td><td>' + val('doctor') + '</td></tr>' +
+      '<tr><td class="k">วันที่ขอ</td><td>' + rec.date + '</td><td class="k">ประเภท</td><td>' + (rec.evalType === 'renewal' ? 'ต่อเนื่อง' : 'คำขอใหม่') + '</td></tr>' +
+      '<tr><td class="k">ยา/ขนาด</td><td colspan="3">' + ({ PITAVA: 'Pitavastatin (original)', EVO: 'Evolocumab', INCL: 'Inclisiran' }[rec.drug]) + ' — ' + (val('drug_dose') || '-') + '</td></tr>' +
+      '<tr><td class="k">รหัสเหตุผล</td><td colspan="3">' + (rec.reasons.join(', ') || '-') + '</td></tr>' +
+      '<tr><td class="k">ข้อมูลสรุป</td><td colspan="3" style="white-space:pre-line">' + $('summary_output').value + '</td></tr>' +
+      '</table>' +
+      '<div class="ps-sign"><div><div class="line">แพทย์ผู้ขอ</div></div><div><div class="line">เภสัชกร/ประธานกรรมการ DUE</div></div></div>';
+  }
+  $('btn_print').addEventListener('click', function () {
+    if (!$('print_sheet').innerHTML) {
+      fillPrint({ hn: val('hn') || '-', initials: val('pt_name') || '-', age: num('age') || 0, sex: val('sex') || '-', unit: val('unit') || '-', drug: selectedDrug() || 'PITAVA', evalType: val('eval_type'), reasons: ['A', 'B', 'C', 'D', 'E', 'F'].filter(function (c) { return $('reason_' + c).checked; }), date: val('req_date') || new Date().toISOString().slice(0, 10), criteriaVersion: M.meta.criteriaVersion, verdict: 'warn' });
+    }
+    window.print();
+  });
+
+  /* ---------- init ---------- */
+  restoreDraft();
+  evaluate();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<?php
+/**
+ * inc/config.php.example — copy to inc/config.php and fill in (config.php is git-ignored).
+ * Environment variables (dev/compose.yaml) override host/user when present.
+ */
+declare(strict_types=1);
+
+return [
+    'db' => [
+        'host'     => getenv('DUE_DB_HOST') ?: '127.0.0.1',
+        'port'     => getenv('DUE_DB_PORT') ?: '1433',
+        'database' => 'DUE_DB',
+        'user'     => getenv('DUE_DB_USER') ?: 'due_app',
+        'password' => getenv('DUE_DB_PASS') ?: 'Due#App-2024!',
+        'timeout'  => 10,               // seconds (FR-1.3 graceful fallback)
+    ],
+    'app' => [
+        // DEV ONLY (docs/09 §5): allows ?devu=HOSP\due_doc1 login simulation on Linux,
+        // where IIS Windows Auth does not exist. MUST be false in staging/production
+        // (checked in the docs/07 §5 go-live checklist).
+        'dev_impersonate' => true,
+        'session_idle_seconds' => 900,  // NFR-6
+        'units' => ['CARDIO' => 'อายุรกรรมหัวใจ', 'ENDO' => 'อายุรกรรมต่อมไร้ท่อ'],
+    ],
+];

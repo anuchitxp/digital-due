@@ -1,0 +1,42 @@
+# dev/compose.yaml — DUE dev stack: PHP 8.3 app + MS SQL 2022 (docs/06 §7)
+# Usage: podman compose -f dev/compose.yaml up -d --build
+name: digital-due
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: dev/Containerfile.php
+    container_name: due-app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../app:/app:Z
+    environment:
+      DUE_DB_HOST: db
+      DUE_DB_PORT: "1433"
+      DUE_DB_USER: due_app
+      DUE_DB_PASS: "Due#App-2024!"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: due-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Due#Dev-2024!"
+      MSSQL_PID: Developer
+      MSSQL_MEMORY_LIMIT_MB: 2048
+    volumes:
+      - due-db-data:/var/opt/mssql
+      - ../db:/db:ro,Z
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Due#Dev-2024!' -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  due-db-data:
